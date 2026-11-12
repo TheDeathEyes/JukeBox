@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Boîte à Musique - Lecteur PC</title>
+  <title>Manif'Musik - Lecteur PC</title>
   <style>
     body { margin: 0; background: #0f0f13; color: white; font-family: sans-serif; display: flex; height: 100vh; overflow: hidden; }
     #player-container { flex: 3; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #000; position: relative; }
@@ -19,7 +19,7 @@
 <body>
   <div id="player-container">
     <div id="start-overlay" onclick="startParty()">
-      <h1>🎵 Boîte à Musique prête</h1>
+      <h1>Manif'Musik prête</h1>
       <button>Cliquer ici pour activer le son</button>
     </div>
     <div id="player"></div>
@@ -28,7 +28,7 @@
   <div id="sidebar">
     <h2>File d'attente (<span id="count">0</span>)</h2>
     <ul id="queue-list"></ul>
-    <button onclick="socket.emit('nextTrack')" style="font-size: 0.9rem; padding: 10px; background: #333;">⏭️ Passer le son</button>
+    <button onclick="socket.emit('nextTrack')" style="font-size: 0.9rem; padding: 10px; background: #333;">Passer la musique</button>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
