@@ -7,22 +7,31 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Sert le dossier "public" pour afficher les pages web
+const MOT_DE_PASSE = "soiree2026";
+
+app.get('/player.html', (req, res, next) => {
+  const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
+  const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
+
+  if (login === 'admin' && password === MOT_DE_PASSE) {
+    return next();
+  }
+  res.set('WWW-Authenticate', 'Basic realm="Accès au Lecteur PC"');
+  res.status(401).send('Accès refusé : Mot de passe requis.');
+});
+
 app.use(express.static('public'));
 
 let queue = [];
 let currentTrack = null;
 
-// Route anti-veille pour les hébergeurs gratuits comme Render
 app.get('/ping', (req, res) => res.send('pong'));
 
-// Route de recherche YouTube (sans clé API)
 app.get('/search', async (req, res) => {
   const query = req.query.q;
   if (!query) return res.json([]);
   try {
     const results = await yts(query);
-    // On garde les 10 premières vidéos
     const videos = results.videos.slice(0, 30).map(v => ({
       id: v.videoId,
       title: v.title,
@@ -37,14 +46,10 @@ app.get('/search', async (req, res) => {
   }
 });
 
-// Gestion temps réel avec Socket.io
 io.on('connection', (socket) => {
-  // Met à jour l'utilisateur qui vient de se connecter
   socket.emit('updateState', { queue, currentTrack });
 
-  // Ajout d'une musique à la file d'attente
   socket.on('addTrack', (track) => {
-    // Éviter les doublons immédiats
     const exists = queue.some(t => t.id === track.id) || (currentTrack && currentTrack.id === track.id);
     if (!exists) {
       queue.push(track);
@@ -52,7 +57,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Le lecteur passe au son suivant
   socket.on('nextTrack', () => {
     if (queue.length > 0) {
       currentTrack = queue.shift();
@@ -63,8 +67,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// Lancement du serveur sur le port imposé par l'hébergeur
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Boîte à Musique en ligne sur le port ${PORT}`);
+  console.log(`🎵 Boîte à Musique en ligne sur le port ${PORT}`);
 });
