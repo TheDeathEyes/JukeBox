@@ -23,7 +23,7 @@ app.get('/search', async (req, res) => {
   try {
     const results = await yts(query);
     // On garde les 10 premières vidéos
-    const videos = results.videos.slice(0, 10).map(v => ({
+    const videos = results.videos.slice(0, 30).map(v => ({
       id: v.videoId,
       title: v.title,
       author: v.author.name,
