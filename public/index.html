@@ -3,26 +3,42 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Boîte à Musique</title>
+  <title>Manif'Musik</title>
   <style>
     body { margin: 0; background: #121212; color: white; font-family: -apple-system, sans-serif; padding: 15px; }
     h1 { font-size: 1.4rem; text-align: center; color: #1db954; }
-    #now-playing { background: #1e1e24; padding: 12px; border-radius: 10px; margin-bottom: 15px; font-size: 0.9rem; border-left: 4px solid #1db954; }
+    #now-playing { background: #1e1e24; padding: 12px; border-radius: 10px; margin-bottom: 10px; font-size: 0.9rem; border-left: 4px solid #1db954; }
+    
+    /* Bouton et vue de la file d'attente */
+    .btn-queue { width: 100%; padding: 10px; background: #2a2a2a; color: white; border: 1px solid #1db954; border-radius: 10px; margin-bottom: 15px; font-weight: bold; cursor: pointer; }
+    #queue-container { display: none; background: #1a1a1a; padding: 10px; border-radius: 10px; margin-bottom: 15px; max-height: 250px; overflow-y: auto; }
+    .queue-item-mobile { display: flex; gap: 10px; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+    .queue-item-mobile:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .queue-item-mobile img { width: 45px; height: 45px; object-fit: cover; border-radius: 4px; }
+    
     .search-box { display: flex; gap: 8px; margin-bottom: 15px; }
     input { flex: 1; padding: 12px; border-radius: 25px; border: none; background: #2a2a2a; color: white; font-size: 1rem; outline: none; }
-    button { padding: 12px 20px; border-radius: 25px; border: none; background: #1db954; color: white; font-weight: bold; font-size: 1rem; }
+    button { padding: 12px 20px; border-radius: 25px; border: none; background: #1db954; color: white; font-weight: bold; font-size: 1rem; cursor: pointer; }
+    
     .track { display: flex; align-items: center; gap: 12px; background: #1e1e1e; padding: 10px; border-radius: 10px; margin-bottom: 10px; cursor: pointer; }
     .track:active { background: #333; }
     .track img { width: 60px; height: 45px; object-fit: cover; border-radius: 6px; }
     .info { flex: 1; overflow: hidden; }
-    .title { font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .title { font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.95rem; }
     .meta { font-size: 0.8rem; color: #aaa; margin-top: 4px; }
-    #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1db954; color: black; font-weight: bold; padding: 12px 24px; border-radius: 30px; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+    
+    #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1db954; color: black; font-weight: bold; padding: 12px 24px; border-radius: 30px; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 100; }
   </style>
 </head>
 <body>
-  <h1>🎶 Boîte à Musique</h1>
+  <h1>Manif'Musik</h1>
+  
   <div id="now-playing">En cours : <strong id="current-title">Rien pour l'instant</strong></div>
+  
+  <button class="btn-queue" onclick="toggleQueue()">Voir la file d'attente (<span id="queue-count">0</span>)</button>
+  <div id="queue-container">
+    <div id="queue-list-mobile" style="font-size:0.9rem; color:#aaa; text-align:center;">La file est vide</div>
+  </div>
   
   <div class="search-box">
     <input type="text" id="search-input" placeholder="Titre, artiste..." onkeyup="if(event.key==='Enter') searchMusic()">
@@ -36,40 +52,82 @@
   <script>
     const socket = io();
     let lastAddTime = 0;
+    let currentResults = [];
+    let displayCount = 10;
+
+    // Affiche ou cache la file d'attente
+    function toggleQueue() {
+      const q = document.getElementById('queue-container');
+      q.style.display = (q.style.display === 'none' || q.style.display === '') ? 'block' : 'none';
+    }
 
     socket.on('updateState', ({ queue, currentTrack }) => {
       document.getElementById('current-title').innerText = currentTrack ? currentTrack.title : "Aucune musique";
+      document.getElementById('queue-count').innerText = queue.length;
+      
+      const qList = document.getElementById('queue-list-mobile');
+      if (queue.length === 0) {
+        qList.innerHTML = '<div style="color:#aaa; text-align:center;">La file est vide</div>';
+      } else {
+        qList.innerHTML = queue.map((t, i) => `
+          <div class="queue-item-mobile">
+            <img src="${t.thumbnail}">
+            <div style="overflow:hidden;">
+              <div style="font-weight:bold; font-size:0.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${i + 1}. ${t.title}</div>
+              <div style="font-size:0.75rem; color:#aaa;">${t.author}</div>
+            </div>
+          </div>
+        `).join('');
+      }
     });
 
     async function searchMusic() {
       const q = document.getElementById('search-input').value.trim();
       if (!q) return;
       const resultsDiv = document.getElementById('results');
-      resultsDiv.innerHTML = '<p style="text-align:center;color:#aaa;">Recherche...</p>';
+      resultsDiv.innerHTML = '<p style="text-align:center;color:#aaa;">Recherche en cours...</p>';
 
       try {
         const res = await fetch(`/search?q=${encodeURIComponent(q)}`);
-        const videos = await res.json();
-        resultsDiv.innerHTML = videos.map(v => `
-          <div class="track" onclick='addTrack(${JSON.stringify(v).replace(/'/g, "'")})'>
-            <img src="${v.thumbnail}">
-            <div class="info">
-              <div class="title">${v.title}</div>
-              <div class="meta">${v.author} • ${v.duration}</div>
-            </div>
-            <span style="font-size:1.3rem;">➕</span>
-          </div>
-        `).join('');
+        currentResults = await res.json();
+        displayCount = 10; 
+        renderResults();
       } catch (e) {
         resultsDiv.innerHTML = '<p style="text-align:center;color:red;">Erreur de recherche.</p>';
       }
     }
 
+    function renderResults() {
+      const resultsDiv = document.getElementById('results');
+      const videosToShow = currentResults.slice(0, displayCount);
+
+      let html = videosToShow.map(v => `
+        <div class="track" onclick='addTrack(${JSON.stringify(v).replace(/'/g, "'")})'>
+          <img src="${v.thumbnail}">
+          <div class="info">
+            <div class="title">${v.title}</div>
+            <div class="meta">${v.author} • ${v.duration}</div>
+          </div>
+          <span style="font-size:1.3rem;">➕</span>
+        </div>
+      `).join('');
+
+      if (displayCount < currentResults.length) {
+        html += `<button onclick="showMore()" style="width:100%; margin-top:10px; background:#2a2a2a; color:#1db954; padding:15px; border-radius:10px; border:1px solid #1db954; cursor:pointer;">⬇️ Afficher plus de titres</button>`;
+      }
+
+      resultsDiv.innerHTML = html;
+    }
+
+    function showMore() {
+      displayCount += 10;
+      renderResults();
+    }
+
     function addTrack(track) {
       const now = Date.now();
-      // Anti-spam de 5 secondes pour éviter qu'un invité bourrine le bouton
       if (now - lastAddTime < 5000) {
-        alert("Doucement ! Attends un peu avant d'ajouter une autre musique.");
+        alert("Doucement ! Attends 5 secondes avant d'ajouter une autre musique.");
         return;
       }
       lastAddTime = now;
