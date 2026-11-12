@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Boîte à Musique</title>
+  <style>
+    body { margin: 0; background: #121212; color: white; font-family: -apple-system, sans-serif; padding: 15px; }
+    h1 { font-size: 1.4rem; text-align: center; color: #1db954; }
+    #now-playing { background: #1e1e24; padding: 12px; border-radius: 10px; margin-bottom: 15px; font-size: 0.9rem; border-left: 4px solid #1db954; }
+    .search-box { display: flex; gap: 8px; margin-bottom: 15px; }
+    input { flex: 1; padding: 12px; border-radius: 25px; border: none; background: #2a2a2a; color: white; font-size: 1rem; outline: none; }
+    button { padding: 12px 20px; border-radius: 25px; border: none; background: #1db954; color: white; font-weight: bold; font-size: 1rem; }
+    .track { display: flex; align-items: center; gap: 12px; background: #1e1e1e; padding: 10px; border-radius: 10px; margin-bottom: 10px; cursor: pointer; }
+    .track:active { background: #333; }
+    .track img { width: 60px; height: 45px; object-fit: cover; border-radius: 6px; }
+    .info { flex: 1; overflow: hidden; }
+    .title { font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .meta { font-size: 0.8rem; color: #aaa; margin-top: 4px; }
+    #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1db954; color: black; font-weight: bold; padding: 12px 24px; border-radius: 30px; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+  </style>
+</head>
+<body>
+  <h1>🎶 Boîte à Musique</h1>
+  <div id="now-playing">En cours : <strong id="current-title">Rien pour l'instant</strong></div>
+  
+  <div class="search-box">
+    <input type="text" id="search-input" placeholder="Titre, artiste..." onkeyup="if(event.key==='Enter') searchMusic()">
+    <button onclick="searchMusic()">Chercher</button>
+  </div>
+  
+  <div id="results"></div>
+  <div id="toast">Ajouté à la file d'attente !</div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let lastAddTime = 0;
+
+    socket.on('updateState', ({ queue, currentTrack }) => {
+      document.getElementById('current-title').innerText = currentTrack ? currentTrack.title : "Aucune musique";
+    });
+
+    async function searchMusic() {
+      const q = document.getElementById('search-input').value.trim();
+      if (!q) return;
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = '<p style="text-align:center;color:#aaa;">Recherche...</p>';
+
+      try {
+        const res = await fetch(`/search?q=${encodeURIComponent(q)}`);
+        const videos = await res.json();
+        resultsDiv.innerHTML = videos.map(v => `
+          <div class="track" onclick='addTrack(${JSON.stringify(v).replace(/'/g, "'")})'>
+            <img src="${v.thumbnail}">
+            <div class="info">
+              <div class="title">${v.title}</div>
+              <div class="meta">${v.author} • ${v.duration}</div>
+            </div>
+            <span style="font-size:1.3rem;">➕</span>
+          </div>
+        `).join('');
+      } catch (e) {
+        resultsDiv.innerHTML = '<p style="text-align:center;color:red;">Erreur de recherche.</p>';
+      }
+    }
+
+    function addTrack(track) {
+      const now = Date.now();
+      // Anti-spam de 5 secondes pour éviter qu'un invité bourrine le bouton
+      if (now - lastAddTime < 5000) {
+        alert("Doucement ! Attends un peu avant d'ajouter une autre musique.");
+        return;
+      }
+      lastAddTime = now;
+
+      socket.emit('addTrack', track);
+      const toast = document.getElementById('toast');
+      toast.style.display = 'block';
+      setTimeout(() => toast.style.display = 'none', 2500);
+    }
+  </script>
+</body>
+</html>
