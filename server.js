@@ -7,7 +7,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-const MOT_DE_PASSE = "soiree2026";
+const MOT_DE_PASSE = "122333";
 
 app.get('/player.html', (req, res, next) => {
   const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
