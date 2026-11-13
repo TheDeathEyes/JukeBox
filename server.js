@@ -16,14 +16,16 @@ app.get('/player.html', (req, res, next) => {
   if (login === 'admin' && password === MOT_DE_PASSE) {
     return next();
   }
-  res.set('WWW-Authenticate', 'Basic realm="Accès au Lecteur PC"');
-  res.status(401).send('Accès refusé : Mot de passe requis.');
+  res.set('WWW-Authenticate', 'Basic realm="Acces au Lecteur PC"');
+  res.status(401).send('Acces refuse : Mot de passe requis.');
 });
 
 app.use(express.static('public'));
 
 let queue = [];
 let currentTrack = null;
+const SEUIL_VOTES = 10;
+let skipVotes = new Set();
 
 app.get('/ping', (req, res) => res.send('pong'));
 
@@ -41,13 +43,24 @@ app.get('/search', async (req, res) => {
     }));
     res.json(videos);
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: 'Erreur de recherche' });
   }
 });
 
+function passerMusique() {
+  if (queue.length > 0) {
+    currentTrack = queue.shift();
+  } else {
+    currentTrack = null;
+  }
+  skipVotes.clear();
+  io.emit('updateSkipVotes', 0);
+  io.emit('updateState', { queue, currentTrack });
+}
+
 io.on('connection', (socket) => {
   socket.emit('updateState', { queue, currentTrack });
+  socket.emit('updateSkipVotes', skipVotes.size);
 
   socket.on('addTrack', (track) => {
     const exists = queue.some(t => t.id === track.id) || (currentTrack && currentTrack.id === track.id);
@@ -58,12 +71,18 @@ io.on('connection', (socket) => {
   });
 
   socket.on('nextTrack', () => {
-    if (queue.length > 0) {
-      currentTrack = queue.shift();
-    } else {
-      currentTrack = null;
+    passerMusique();
+  });
+
+  socket.on('voteSkip', () => {
+    if (currentTrack) {
+      skipVotes.add(socket.id);
+      io.emit('updateSkipVotes', skipVotes.size);
+      
+      if (skipVotes.size >= SEUIL_VOTES) {
+        passerMusique();
+      }
     }
-    io.emit('updateState', { queue, currentTrack });
   });
 
   socket.on('admin-trigger-flashmob', () => {
@@ -73,5 +92,5 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Boîte à Musique en ligne sur le port ${PORT}`);
+  console.log(`Boite a Musique en ligne sur le port ${PORT}`);
 });
