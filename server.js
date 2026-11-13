@@ -59,6 +59,10 @@ function passerMusique() {
 }
 
 io.on('connection', (socket) => {
+  const clientIp = socket.handshake.headers['x-forwarded-for'] 
+    ? socket.handshake.headers['x-forwarded-for'].split(',')[0].trim() 
+    : socket.handshake.address;
+
   socket.emit('updateState', { queue, currentTrack });
   socket.emit('updateSkipVotes', skipVotes.size);
 
@@ -75,8 +79,8 @@ io.on('connection', (socket) => {
   });
 
   socket.on('voteSkip', () => {
-    if (currentTrack) {
-      skipVotes.add(socket.id);
+    if (currentTrack && !skipVotes.has(clientIp)) {
+      skipVotes.add(clientIp);
       io.emit('updateSkipVotes', skipVotes.size);
       
       if (skipVotes.size >= SEUIL_VOTES) {
