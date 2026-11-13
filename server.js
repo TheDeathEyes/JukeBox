@@ -65,9 +65,13 @@ io.on('connection', (socket) => {
     }
     io.emit('updateState', { queue, currentTrack });
   });
+
+  socket.on('admin-trigger-flashmob', () => {
+    io.emit('flashmob-start');
+  });
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🎵 Boîte à Musique en ligne sur le port ${PORT}`);
+  console.log(`Boîte à Musique en ligne sur le port ${PORT}`);
 });
