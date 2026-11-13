@@ -9,6 +9,9 @@
     h1 { font-size: 1.4rem; text-align: center; color: #1db954; }
     #now-playing { background: #1e1e24; padding: 12px; border-radius: 10px; margin-bottom: 10px; font-size: 0.9rem; border-left: 4px solid #1db954; }
     
+    .btn-skip { background: #cf142b; color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; width: 100%; margin-bottom: 15px; font-size: 1rem; }
+    .btn-skip:active { background: #a00f20; }
+    
     .btn-queue { width: 100%; padding: 10px; background: #2a2a2a; color: white; border: 1px solid #1db954; border-radius: 10px; margin-bottom: 15px; font-weight: bold; cursor: pointer; }
     #queue-container { display: none; background: #1a1a1a; padding: 10px; border-radius: 10px; margin-bottom: 15px; max-height: 250px; overflow-y: auto; }
     .queue-item-mobile { display: flex; gap: 10px; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 10px; }
@@ -48,6 +51,8 @@
   
   <div id="now-playing">En cours : <strong id="current-title">Rien pour l'instant</strong></div>
   
+  <button class="btn-skip" onclick="voteSkip()">C'est rince ! Passer (<span id="vote-count">0</span>/10)</button>
+  
   <button class="btn-queue" onclick="toggleQueue()">Voir la file d'attente (<span id="queue-count">0</span>)</button>
   <div id="queue-container">
     <div id="queue-list-mobile" style="font-size:0.9rem; color:#aaa; text-align:center;">La file est vide</div>
@@ -59,7 +64,7 @@
   </div>
   
   <div id="results"></div>
-  <div id="toast">Ajouté à la file d'attente</div>
+  <div id="toast">Ajoute a la file d'attente</div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
@@ -90,6 +95,22 @@
             </div>
           </div>
         `).join('');
+      }
+    });
+
+    function voteSkip() {
+      socket.emit('voteSkip');
+      const btn = document.querySelector('.btn-skip');
+      btn.style.background = '#555';
+      btn.innerText = "Vote enregistre...";
+    }
+
+    socket.on('updateSkipVotes', (count) => {
+      document.getElementById('vote-count').innerText = count;
+      if (count === 0) {
+        const btn = document.querySelector('.btn-skip');
+        btn.style.background = '#cf142b';
+        btn.innerHTML = `C'est rince ! Passer (<span id="vote-count">0</span>/10)`;
       }
     });
 
