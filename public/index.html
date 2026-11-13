@@ -9,7 +9,6 @@
     h1 { font-size: 1.4rem; text-align: center; color: #1db954; }
     #now-playing { background: #1e1e24; padding: 12px; border-radius: 10px; margin-bottom: 10px; font-size: 0.9rem; border-left: 4px solid #1db954; }
     
-    /* Bouton et vue de la file d'attente */
     .btn-queue { width: 100%; padding: 10px; background: #2a2a2a; color: white; border: 1px solid #1db954; border-radius: 10px; margin-bottom: 15px; font-weight: bold; cursor: pointer; }
     #queue-container { display: none; background: #1a1a1a; padding: 10px; border-radius: 10px; margin-bottom: 15px; max-height: 250px; overflow-y: auto; }
     .queue-item-mobile { display: flex; gap: 10px; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 10px; }
@@ -28,6 +27,20 @@
     .meta { font-size: 0.8rem; color: #aaa; margin-top: 4px; }
     
     #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1db954; color: black; font-weight: bold; padding: 12px 24px; border-radius: 30px; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 100; }
+
+    @keyframes strobe {
+      0% { opacity: 1; }
+      50% { opacity: 0; }
+      100% { opacity: 1; }
+    }
+    .strobe-effect {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background-color: white;
+      z-index: 9999;
+      pointer-events: none;
+      animation: strobe 0.15s infinite;
+    }
   </style>
 </head>
 <body>
@@ -46,7 +59,7 @@
   </div>
   
   <div id="results"></div>
-  <div id="toast">Ajouté à la file d'attente !</div>
+  <div id="toast">Ajouté à la file d'attente</div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
@@ -55,7 +68,6 @@
     let currentResults = [];
     let displayCount = 10;
 
-    // Affiche ou cache la file d'attente
     function toggleQueue() {
       const q = document.getElementById('queue-container');
       q.style.display = (q.style.display === 'none' || q.style.display === '') ? 'block' : 'none';
@@ -79,6 +91,22 @@
           </div>
         `).join('');
       }
+    });
+
+    socket.on('flashmob-start', () => {
+      const flashScreen = document.createElement('div');
+      flashScreen.className = 'strobe-effect';
+      document.body.appendChild(flashScreen);
+
+      if (navigator.vibrate) {
+        navigator.vibrate([150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150, 150]); 
+      }
+
+      setTimeout(() => {
+        if (document.body.contains(flashScreen)) {
+          document.body.removeChild(flashScreen);
+        }
+      }, 5000);
     });
 
     async function searchMusic() {
@@ -106,9 +134,9 @@
           <img src="${v.thumbnail}">
           <div class="info">
             <div class="title">${v.title}</div>
-            <div class="meta">${v.author} • ${v.duration}</div>
+            <div class="meta">${v.author} - ${v.duration}</div>
           </div>
-          <span style="font-size:1.3rem;">➕</span>
+          <span style="font-size:1.3rem;">+</span>
         </div>
       `).join('');
 
@@ -127,7 +155,7 @@
     function addTrack(track) {
       const now = Date.now();
       if (now - lastAddTime < 5000) {
-        alert("Doucement ! Attends 5 secondes avant d'ajouter une autre musique.");
+        alert("Attends 5 secondes avant d'ajouter une autre musique.");
         return;
       }
       lastAddTime = now;
