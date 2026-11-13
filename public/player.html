@@ -19,7 +19,7 @@
 <body>
   <div id="player-container">
     <div id="start-overlay" onclick="startParty()">
-      <h1>Manif'Musik prête</h1>
+      <h1>Manif'Musik prete</h1>
       <button>Cliquer ici pour activer le son</button>
     </div>
     <div id="player"></div>
@@ -28,7 +28,8 @@
   <div id="sidebar">
     <h2>File d'attente (<span id="count">0</span>)</h2>
     <ul id="queue-list"></ul>
-    <button onclick="socket.emit('nextTrack')" style="font-size: 0.9rem; padding: 10px; background: #333;">Passer la musique</button>
+    <button onclick="socket.emit('nextTrack')" style="font-size: 0.9rem; padding: 10px; background: #333; margin-bottom: 15px;">Passer la musique</button>
+    <button onclick="socket.emit('admin-trigger-flashmob')" style="background: #e91e63; font-size: 1.1rem; padding: 15px; width: 100%;">Lancer Flashmob</button>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
@@ -81,7 +82,6 @@
       }
     });
 
-    // PING : Empêche le serveur Render de s'endormir pendant la soirée
     setInterval(() => fetch('/ping'), 5 * 60 * 1000);
   </script>
 </body>
